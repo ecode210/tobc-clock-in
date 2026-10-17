@@ -1,0 +1,9 @@
+# Only cloud_admin/ is needed to build the image.
+*
+!cloud_admin/
+cloud_admin/node_modules
+cloud_admin/.next
+cloud_admin/.env*
+cloud_admin/npm-debug.log*
+cloud_admin/README.md
+cloud_admin/AGENTS.md

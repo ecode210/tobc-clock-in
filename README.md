@@ -113,7 +113,7 @@ Cloud admin environment variables (see [`cloud_admin/.env.example`](cloud_admin/
 
 ### Cloud admin
 
-`cloud_admin/Dockerfile` builds a standalone production image that listens on port 3000. Build it with `cloud_admin` as the context, then run it next to Postgres, for example on Dokploy. In production:
+The `Dockerfile` at the repo root builds a standalone production image of the cloud admin that listens on port 3000. Build it from the repo root (`docker build -t tobc-cloud-admin .`), then run it next to Postgres, for example on Dokploy with the default Dockerfile settings. In production:
 
 - Serve it over **HTTPS**. Session cookies are marked secure, so sign-in will not stick over plain HTTP.
 - Use fresh random values for `AUTH_SECRET` and `SYNC_TOKEN`. Never reuse the example values.
