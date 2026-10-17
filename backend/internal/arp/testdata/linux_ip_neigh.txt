@@ -1,0 +1,5 @@
+192.168.1.1 dev wlan0 lladdr a4:2b:b0:01:02:03 REACHABLE
+192.168.1.40 dev wlan0 INCOMPLETE
+192.168.1.41 dev wlan0 FAILED
+fe80::1 dev wlan0 lladdr a4:2b:b0:01:02:03 router STALE
+fe80::38f:1cff:fe9d:e05 dev wlan0 lladdr 3a:0f:1c:9d:0e:05 DELAY

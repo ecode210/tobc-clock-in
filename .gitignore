@@ -1,0 +1,16 @@
+# Go
+backend/bin/
+
+# SQLite databases (incl. -wal / -shm)
+*.db*
+
+# Node / Next.js
+node_modules/
+.next/
+
+# Flutter
+worker_web/build/
+.dart_tool/
+
+# Env files
+.env*

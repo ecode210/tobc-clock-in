@@ -1,0 +1,12 @@
+
+
+Interface 12: Wi-Fi
+
+
+Internet Address                              Physical Address   Type
+--------------------------------------------  -----------------  -----------
+fe80::1                                       a4-2b-b0-01-02-03  Reachable (Router)
+fe80::38f:1cff:fe9d:e05                       3a-0f-1c-9d-0e-05  Stale
+fe80::9                                                          Unreachable
+fe80::10                                      00-00-00-00-00-00  Incomplete
+ff02::1                                       33-33-00-00-00-01  Permanent

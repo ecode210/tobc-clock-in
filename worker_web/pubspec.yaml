@@ -1,0 +1,39 @@
+name: worker_web
+description: "TOBC Worker Clock-In: offline worker web app served by the church laptop."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  shared_preferences: ^2.5.6
+  intl: ^0.20.3
+  flutter_svg: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.svg
+
+  fonts:
+    - family: SourceSans3
+      fonts:
+        - asset: assets/fonts/SourceSans3-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/SourceSans3-Semibold.ttf
+          weight: 600
+        - asset: assets/fonts/SourceSans3-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/SourceSans3-Black.ttf
+          weight: 900
