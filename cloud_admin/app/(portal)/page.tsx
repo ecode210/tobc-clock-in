@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertIcon, ChevronRightIcon } from "@/components/icons";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,6 +11,8 @@ import { query } from "@/lib/db";
 import { getDefaultCutoff } from "@/lib/settings";
 import { getSyncStatus, isLaptopOnline } from "@/lib/sync-status";
 import { formatDateTime, formatRelative, todayDate } from "@/lib/time";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 const RECENT_LIMIT = 10;
 

@@ -4,6 +4,7 @@ package api
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -28,9 +29,13 @@ type Server struct {
 	Resolver     arp.Resolver
 	SkipMACCheck bool
 	Syncer       SyncRunner
-	WebDir       string
-	Now          func() time.Time
-	Logger       *slog.Logger
+	// WebFS holds the built worker web app served at /. Nil serves nothing.
+	WebFS fs.FS
+	// Shutdown, when set, is called by the loopback shutdown endpoint so the
+	// desktop app can stop the server gracefully.
+	Shutdown func()
+	Now      func() time.Time
+	Logger   *slog.Logger
 }
 
 func (s *Server) now() time.Time {
@@ -63,6 +68,10 @@ func (s *Server) Router() *gin.Engine {
 	syncGroup := r.Group("/api/v1/sync", loopbackOnly())
 	syncGroup.POST("", s.handleSyncNow)
 	syncGroup.GET("/status", s.handleSyncStatus)
+
+	local := r.Group("/api/v1/local", loopbackOnly())
+	local.GET("/summary", s.handleLocalSummary)
+	local.POST("/shutdown", s.handleLocalShutdown)
 
 	r.NoRoute(s.handleNoRoute)
 	return r
@@ -158,6 +167,37 @@ func (s *Server) handleSyncNow(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, s.Syncer.RunCycle(c.Request.Context()))
+}
+
+func (s *Server) handleLocalSummary(c *gin.Context) {
+	ctx := c.Request.Context()
+	today := s.now().Format(db.LocalDateFormat)
+	var workers, registered, clockedIn int
+	err := s.DB.QueryRowContext(ctx, `SELECT
+		(SELECT count(*) FROM workers),
+		(SELECT count(*) FROM workers WHERE device_token IS NOT NULL),
+		(SELECT count(*) FROM clock_ins WHERE clock_in_date = ?)`, today).Scan(&workers, &registered, &clockedIn)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, "Could not read the local database.")
+		return
+	}
+	pending, _ := db.PendingClockInCount(ctx, s.DB)
+	c.JSON(http.StatusOK, gin.H{
+		"date":              today,
+		"workers":           workers,
+		"devices_locked":    registered,
+		"clocked_in_today":  clockedIn,
+		"pending_clock_ins": pending,
+	})
+}
+
+func (s *Server) handleLocalShutdown(c *gin.Context) {
+	if s.Shutdown == nil {
+		jsonError(c, http.StatusNotImplemented, "Shutdown is not available.")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+	go s.Shutdown()
 }
 
 func (s *Server) handleSyncStatus(c *gin.Context) {

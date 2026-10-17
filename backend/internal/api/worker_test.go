@@ -338,13 +338,36 @@ func TestSyncEndpointsLoopbackOnly(t *testing.T) {
 	}
 }
 
+func TestLocalEndpoints(t *testing.T) {
+	h := newHarness(t)
+	expectCode(t, h.do(http.MethodGet, "/api/v1/local/summary", phoneA, "", ""), 403)
+	expectCode(t, h.do(http.MethodPost, "/api/v1/local/shutdown", phoneA, "", ""), 403)
+
+	expectCode(t, h.register(phoneA, "ada.obi", "ABC234"), 200)
+	r := h.do(http.MethodGet, "/api/v1/local/summary", "127.0.0.1", "", "")
+	expectCode(t, r, 200)
+	if r.body["workers"] != float64(2) || r.body["devices_locked"] != float64(1) || r.body["date"] != "2026-10-18" {
+		t.Fatalf("summary = %v", r.body)
+	}
+
+	expectCode(t, h.do(http.MethodPost, "/api/v1/local/shutdown", "127.0.0.1", "", ""), 501)
+	called := make(chan struct{})
+	h.srv.Shutdown = func() { close(called) }
+	expectCode(t, h.do(http.MethodPost, "/api/v1/local/shutdown", "127.0.0.1", "", ""), 200)
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatal("shutdown not called")
+	}
+}
+
 func TestStaticSPAFallback(t *testing.T) {
 	h := newHarness(t)
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html>spa</html>"), 0o644)
 	os.WriteFile(filepath.Join(dir, "main.dart.js"), []byte("console.log(1)"), 0o644)
 	os.MkdirAll(filepath.Join(dir, "assets"), 0o755)
-	h.srv.WebDir = dir
+	h.srv.WebFS = os.DirFS(dir)
 
 	get := func(path string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

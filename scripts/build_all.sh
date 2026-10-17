@@ -27,9 +27,15 @@ if leftovers="$(grep -rlE 'fonts\.googleapis\.com|fonts\.gstatic\.com|gstatic\.c
   exit 1
 fi
 
+echo "==> Embedding worker_web into the server"
+DIST="$ROOT/backend/internal/webassets/dist"
+rm -rf "$DIST"
+cp -R "$WEB_OUT" "$DIST"
+
 echo "==> Building backend/bin/church-clockin"
-(cd "$ROOT/backend" && go build -o bin/church-clockin ./cmd/server)
+(cd "$ROOT/backend" && go build -tags embedweb -trimpath -o bin/church-clockin ./cmd/server)
 
 echo
-echo "Done. Run from the repo root:"
-echo "  ./backend/bin/church-clockin --web-dir worker_web/build/web --db-path backend/attendance.db --cloud-url \"\$CLOUD_URL\" --sync-token \"\$SYNC_TOKEN\""
+echo "Done. The worker web app is built into the server. Run from the repo root:"
+echo "  ./backend/bin/church-clockin --db-path backend/attendance.db --cloud-url \"\$CLOUD_URL\" --sync-token \"\$SYNC_TOKEN\""
+echo "Or build the desktop app with scripts/build_desktop.sh."

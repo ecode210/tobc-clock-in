@@ -8,7 +8,7 @@ Workers clock in from their phones over the church Wi-Fi, even when the building
 
 ```
  Worker phones ──Wi-Fi──▶ Church laptop ──internet (when available)──▶ Cloud admin
- (worker_web)             (backend, SQLite)        every 60s          (cloud_admin, Postgres)
+ (worker_web)          (desktop_app + backend)     every 60s          (cloud_admin, Postgres)
 ```
 
 | Part | Stack | What it does |
@@ -16,6 +16,7 @@ Workers clock in from their phones over the church Wi-Fi, even when the building
 | [`backend/`](backend) | Go, Gin, SQLite | Runs on the church laptop. Serves the worker app, records clock-ins, locks each worker to one phone, and syncs with the cloud. |
 | [`worker_web/`](worker_web) | Flutter web | The page workers open on their phones. Fully offline: no CDN, fonts bundled. |
 | [`cloud_admin/`](cloud_admin) | Next.js, Postgres | Admin portal for managing workers, viewing attendance, and exporting CSVs. |
+| [`desktop_app/`](desktop_app) | Flutter desktop (macOS, Windows) | The app the church tech team uses. Bundles the server, turns it on and off, shows the worker address as a QR code, and lives in the menu bar or system tray. |
 
 ### Clock-in flow
 
@@ -66,10 +67,9 @@ Other scripts: `npm run lint`, `npm run typecheck`, `npm run build`.
 ### 3. Build and run the laptop server
 
 ```bash
-./scripts/build_all.sh   # builds worker_web/build/web and backend/bin/church-clockin
+./scripts/build_all.sh   # builds the worker app into backend/bin/church-clockin
 
 ./backend/bin/church-clockin \
-  --web-dir worker_web/build/web \
   --db-path backend/attendance.db \
   --cloud-url http://localhost:3000 \
   --sync-token dev-sync-token \
@@ -82,19 +82,30 @@ Then open `http://<laptop-ip>:8080` on a phone on the same Wi-Fi. Find the IP wi
 |---|---|---|
 | `--port` | `8080` | HTTP port, on all interfaces |
 | `--db-path` | `attendance.db` | SQLite database file |
-| `--web-dir` | none | Built worker app to serve at `/` |
+| `--web-dir` | none | Serve the worker app from this folder instead of the copy built into the binary |
 | `--cloud-url` | `$CLOUD_URL` | Cloud admin base URL. Empty disables sync. |
 | `--sync-token` | `$SYNC_TOKEN` | Must match the cloud admin's `SYNC_TOKEN` |
 | `--sync-now` | `false` | Run one sync immediately at startup |
 | `--skip-mac-check` | `false` | Allow requests from the laptop itself without a MAC check. Testing only. |
+| `--exit-on-stdin-close` | `false` | Stop when stdin closes. The desktop app uses it so the server never outlives the app. |
 
 Opening `http://localhost:8080` on the laptop itself is rejected unless you pass `--skip-mac-check`, because device locking needs the caller's MAC address.
+
+### 4. Run the desktop app
+
+```bash
+./scripts/build_all.sh       # the app finds backend/bin/church-clockin during development
+cd desktop_app && flutter run -d macos   # or -d windows
+```
+
+On first launch it asks for the cloud admin address and sync token. Settings and the SQLite database live in the app's data folder (shown on the Settings screen).
 
 ### Tests
 
 ```bash
 (cd backend && go test ./...)
 (cd worker_web && flutter test)
+(cd desktop_app && flutter test)
 (cd cloud_admin && npm run lint && npm run typecheck)
 ```
 
@@ -121,9 +132,31 @@ The `Dockerfile` at the repo root builds a standalone production image of the cl
 - Sign in as `admin` / `admin` and change the password straight away.
 - Set up regular Postgres backups.
 
-### Church laptop
+### Church laptop (desktop app)
 
-- Run `church-clockin` with `--cloud-url` set to the deployed admin URL and `--sync-token` set to its `SYNC_TOKEN`.
-- Reserve a fixed IP for the laptop on the church router, so the address workers use never changes.
-- Start the server automatically when the laptop boots, using launchd, systemd, or a Windows service.
-- Allow incoming connections on the server's port in the laptop firewall, and make sure the Wi-Fi has client isolation turned off.
+Installers are built by the **Desktop app release** GitHub Actions workflow. Push a version tag and download the `.dmg` (macOS) and `Setup.exe` (Windows) from the GitHub release:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+To build locally instead, run `./scripts/build_desktop.sh` on a Mac (makes the `.dmg`) or in Git Bash on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) installed (makes the installer). Output goes to `dist/`.
+
+Setting up a laptop:
+
+1. Install the app. On macOS, drag it to Applications. On Windows, run the installer, which also allows the server through the Windows firewall.
+2. Open it, paste the cloud admin address and its `SYNC_TOKEN`, press **Test connection**, then **Save and continue**.
+3. Each service, flip the switch to turn the server on. Workers scan the QR code. Afterwards, turn it off and close the app.
+
+Closing the window while the server is on asks whether to keep it running in the menu bar (macOS) or system tray (Windows). Quitting always stops the server.
+
+The apps are not code signed, so the first launch shows a warning:
+
+- **macOS:** right-click the app in Applications, choose **Open**, then **Open** again. Only needed once.
+- **Windows:** on the SmartScreen prompt, choose **More info**, then **Run anyway**.
+
+Also:
+
+- Reserve a fixed IP for the laptop on the church router, so the QR code and address never change.
+- Make sure the church Wi-Fi has client isolation turned off, or phones cannot reach the laptop.
+- Keep the laptop plugged in and stop it from sleeping during service.

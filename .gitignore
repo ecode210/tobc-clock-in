@@ -1,5 +1,6 @@
 # Go
 backend/bin/
+backend/internal/webassets/dist/
 
 # SQLite databases (incl. -wal / -shm)
 *.db*
@@ -10,7 +11,11 @@ node_modules/
 
 # Flutter
 worker_web/build/
+desktop_app/build/
 .dart_tool/
+
+# Desktop installers
+dist/
 
 # Env files
 .env*

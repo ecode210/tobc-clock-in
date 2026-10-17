@@ -1,16 +1,15 @@
 package api
 
 import (
+	"io"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-// handleNoRoute serves the worker web SPA from WebDir, falling back to
+// handleNoRoute serves the worker web SPA from WebFS, falling back to
 // index.html. Unknown /api/ paths stay JSON 404s.
 func (s *Server) handleNoRoute(c *gin.Context) {
 	reqPath := c.Request.URL.Path
@@ -18,15 +17,14 @@ func (s *Server) handleNoRoute(c *gin.Context) {
 		jsonError(c, http.StatusNotFound, "Not found.")
 		return
 	}
-	if s.WebDir == "" || (c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead) {
+	if s.WebFS == nil || (c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead) {
 		jsonError(c, http.StatusNotFound, "Not found.")
 		return
 	}
 
 	clean := path.Clean("/" + reqPath)
 	if clean != "/" {
-		full := filepath.Join(s.WebDir, filepath.FromSlash(clean))
-		if s.serveFile(c, full, clean) {
+		if s.serveFile(c, strings.TrimPrefix(clean, "/"), clean) {
 			return
 		}
 		// Missing assets must 404: Flutter would otherwise try to decode
@@ -36,13 +34,13 @@ func (s *Server) handleNoRoute(c *gin.Context) {
 			return
 		}
 	}
-	if !s.serveFile(c, filepath.Join(s.WebDir, "index.html"), "/index.html") {
+	if !s.serveFile(c, "index.html", "/index.html") {
 		jsonError(c, http.StatusNotFound, "Worker web app is not built.")
 	}
 }
 
-func (s *Server) serveFile(c *gin.Context, full, urlPath string) bool {
-	f, err := os.Open(full)
+func (s *Server) serveFile(c *gin.Context, name, urlPath string) bool {
+	f, err := s.WebFS.Open(name)
 	if err != nil {
 		return false
 	}
@@ -51,10 +49,14 @@ func (s *Server) serveFile(c *gin.Context, full, urlPath string) bool {
 	if err != nil || info.IsDir() {
 		return false
 	}
+	rs, ok := f.(io.ReadSeeker)
+	if !ok {
+		return false
+	}
 	switch urlPath {
 	case "/index.html", "/flutter_service_worker.js", "/flutter_bootstrap.js", "/version.json", "/manifest.json":
 		c.Header("Cache-Control", "no-cache")
 	}
-	http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), f)
+	http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), rs)
 	return true
 }

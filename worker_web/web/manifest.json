@@ -1,11 +1,11 @@
 {
     "name": "TOBC Clock-In",
-    "short_name": "TOBC Clock-In",
+    "short_name": "Clock-In",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#f2f0f6",
     "theme_color": "#f2f0f6",
-    "description": "TOBC Clock-In",
+    "description": "Clock in for service at The Olivebrook Church.",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

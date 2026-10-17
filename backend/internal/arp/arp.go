@@ -104,7 +104,9 @@ func ipv6Table(ctx context.Context) (map[string]string, error) {
 }
 
 func run(ctx context.Context, name string, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, name, args...).Output()
+	cmd := exec.CommandContext(ctx, name, args...)
+	hideWindow(cmd)
+	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", name, err)
 	}
